@@ -24,6 +24,25 @@ type Organization struct {
 	URLs         []string
 }
 
+type ContactPerson struct {
+	Attributes      CPAttributes
+	Extensions      CPExtensions
+	Company         string
+	EmailAddress    string
+	TelephoneNumber string
+}
+
+type CPAttributes struct {
+	ContactType string
+}
+
+type CPExtensions struct {
+	IPACode    string
+	VATNumber  string
+	FiscalCode string
+	Public     bool
+}
+
 // SAMLBinding can be either HTTPRedirect or HTTPPost.
 type SAMLBinding string
 
@@ -45,6 +64,7 @@ type SP struct {
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
 	Organization               Organization
+	ContactPersons              []ContactPerson
 }
 
 // Session represents an active SPID session.
@@ -146,7 +166,8 @@ func (sp *SP) Metadata() string {
 <md:EntityDescriptor 
     xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"  
     xmlns:ds="http://www.w3.org/2000/09/xmldsig#"  
-    entityID="{{.EntityID}}"  
+  	xmlns:spid="https://spid.gov.it/saml-extensions"
+	entityID="{{.EntityID}}"  
     ID="_681a637-6cd4-434f-92c3-4fed720b2ad8"> 
      
     <md:SPSSODescriptor  
@@ -200,6 +221,32 @@ func (sp *SP) Metadata() string {
         <md:OrganizationURL xml:lang="it">{{ $url }}</md:OrganizationURL>
         {{ end }}
     </md:Organization>
+
+    {{ range $cp := .ContactPersons }}
+    <md:ContactPerson contactType="{{$cp.Attributes.ContactType}}"> 
+		<md:Extensions>
+			{{ if $cp.Extensions.Public }}
+				<spid:IPACode>{{$cp.Extensions.IPACode}}</spid:IPACode>
+				<spid:Public/>
+			{{ else }}
+				{{ if $cp.Extensions.VatNumber }}
+					<spid:VATNumber>{{ $cp.Extensions.VatNumber }}</spid:VATNumber>
+				{{ end }}
+				{{ if $cp.Extensions.FiscalCode }}
+					<spid:FiscalCode>{{ $cp.Extensions.FiscalCode }}</spid:FiscalCode>
+				{{ end }}
+				<spid:Private/>
+			{{end}}
+		</md:Extensions>
+		{{ if $cp.Company }}
+		<md:Company>{{ $cp.Company }}</md:Company>
+		{{ end }}
+		<md:EmailAddress>{{ $cp.EmailAddress }}</md:EmailAddress>
+		{{ if $cp.TelephoneNumber }}
+		<md:TelephoneNumber>{{ $cp.TelephoneNumber }}</md:TelephoneNumber>
+		{{ end }}
+	</md:ContactPerson>
+    {{ end }}
 
 </md:EntityDescriptor>
 `
