@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"github.com/beevik/etree"
+	"github.com/crewjam/go-xmlsec"
 	"io/ioutil"
 	"text/template"
 )
@@ -64,7 +66,7 @@ type SP struct {
 	_cert                      *x509.Certificate
 	_key                       *rsa.PrivateKey
 	Organization               Organization
-	ContactPersons              []ContactPerson
+	ContactPersons             []ContactPerson
 }
 
 // Session represents an active SPID session.
@@ -163,13 +165,14 @@ func (sp *SP) GetIDP(entityID string) (*IDP, error) {
 // Metadata generates XML metadata of this Service Provider.
 func (sp *SP) Metadata() string {
 	const tmpl = `<?xml version="1.0"?> 
-<md:EntityDescriptor 
-    xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"  
-    xmlns:ds="http://www.w3.org/2000/09/xmldsig#"  
-  	xmlns:spid="https://spid.gov.it/saml-extensions"
-	entityID="{{.EntityID}}"  
-    ID="_681a637-6cd4-434f-92c3-4fed720b2ad8"> 
-     
+	<md:EntityDescriptor 
+  		xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata"
+  		xmlns:spid="https://spid.gov.it/saml-extensions"
+		ID="{{.ID}}"
+		entityID="{{.EntityID}}"> 
+
+    {{.Signature}}
+
     <md:SPSSODescriptor  
         protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"  
         AuthnRequestsSigned="true"  
@@ -250,17 +253,78 @@ func (sp *SP) Metadata() string {
 
 </md:EntityDescriptor>
 `
+	id := "fb36a5dc-9328-4966-8fe2-961011896a48"
 	aux := struct {
 		*SP
-		Cert string
+		Cert      string
+		ID        string
+		Signature string
 	}{
 		sp,
 		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
+		id,
+		string(sp.signature(id)),
 	}
 
 	t := template.Must(template.New("metadata").Parse(tmpl))
 	var metadata bytes.Buffer
 	t.Execute(&metadata, aux)
 
-	return metadata.String()
+	return string(sp.signMetadata(metadata))
+}
+
+func (sp *SP) signMetadata(metadata bytes.Buffer) []byte {
+	doc := etree.NewDocument()
+	doc.ReadFromBytes(metadata.Bytes())
+	root := doc.Root()
+	signed, err := xmlsec.Sign(sp.KeyPEM(), metadata.Bytes(), xmlsec.SignatureOptions{
+		XMLID: []xmlsec.XMLIDOption{
+			{
+				ElementName:      root.Tag,
+				ElementNamespace: "",
+				AttributeName:    "ID",
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return signed
+}
+
+func (sp *SP) signature(id string) []byte {
+	const tmpl = `
+	<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+       <ds:SignedInfo>
+         <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+         <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+         <ds:Reference URI="#{{ .ID }}">
+           <ds:Transforms>
+             <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+             <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+           </ds:Transforms>
+           <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+           <ds:DigestValue></ds:DigestValue>
+         </ds:Reference>
+       </ds:SignedInfo>
+       <ds:SignatureValue></ds:SignatureValue>
+       <ds:KeyInfo>
+         <ds:X509Data>
+           <ds:X509Certificate>{{ .Cert }}</ds:X509Certificate>
+         </ds:X509Data>
+       </ds:KeyInfo>
+     </ds:Signature>
+`
+	aux := struct {
+		ID   string
+		Cert string
+	}{
+		id,
+		base64.StdEncoding.EncodeToString(sp.Cert().Raw),
+	}
+	t := template.Must(template.New("sp-signature").Parse(tmpl))
+	var signature bytes.Buffer
+	t.Execute(&signature, aux)
+
+	return signature.Bytes()
 }
