@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	xmlsec "github.com/crewjam/go-xmlsec"
@@ -94,8 +95,8 @@ func (response *Response) validate(inResponseTo string) error {
 					},
 				},
 			})
-			if (err == nil) {
-				break;
+			if err == nil {
+				break
 			}
 		}
 		if err != nil {
@@ -250,6 +251,7 @@ func (response *Response) SubjectConfirmationDataNotOnOrAfter() (time.Time, erro
 // Level returns the SPID level specified in the assertion.
 func (response *Response) Level() int {
 	ref := response.doc.FindElement("/Response/Assertion/AuthnStatement/AuthnContext/AuthnContextClassRef").Text()
+	ref = strings.TrimSpace(ref)
 	i, err := strconv.Atoi(string(ref[len(ref)-1]))
 	if err != nil {
 		return 0
