@@ -3,8 +3,8 @@ package spidsaml
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	xmlsec "github.com/crewjam/go-xmlsec"
@@ -251,11 +251,12 @@ func (response *Response) SubjectConfirmationDataNotOnOrAfter() (time.Time, erro
 // Level returns the SPID level specified in the assertion.
 func (response *Response) Level() int {
 	ref := response.doc.FindElement("/Response/Assertion/AuthnStatement/AuthnContext/AuthnContextClassRef").Text()
-	ref = strings.TrimSpace(ref)
-	i, err := strconv.Atoi(string(ref[len(ref)-1]))
-	if err != nil {
+	r, _ := regexp.Compile("https://www.spid.gov.it/SpidL([1-3])")
+	res := r.FindStringSubmatch(ref)
+	if len(res) == 0 {
 		return 0
 	}
+	i, _ := strconv.Atoi(res[1])
 	return i
 }
 
