@@ -7,10 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"github.com/beevik/etree"
-	"github.com/crewjam/go-xmlsec"
 	"io/ioutil"
 	"text/template"
+
+	"github.com/beevik/etree"
+	"github.com/crewjam/go-xmlsec"
 )
 
 // AttributeConsumingService defines, well, an AttributeConsumingService.
@@ -39,10 +40,41 @@ type CPAttributes struct {
 }
 
 type CPExtensions struct {
-	IPACode    string
-	VATNumber  string
-	FiscalCode string
-	Public     bool
+	IPACode                string
+	VATNumber              string
+	FiscalCode             string
+	Public                 bool
+	CessionarioCommittente CessionarioCommittente
+}
+
+type CessionarioCommittente struct {
+	DatiAnagrafici DatiAnagrafici
+	Sede           Sede
+}
+
+type DatiAnagrafici struct {
+	IDFiscaleIVA IDFiscaleIVA
+	Anagrafica   Anagrafica
+}
+
+type IDFiscaleIVA struct {
+	IDPaese  string
+	IDCodice string
+}
+
+type Anagrafica struct {
+	Denominazione string
+	Titolo        string
+	CodiceEORI    string
+}
+
+type Sede struct {
+	Indirizzo    string
+	NumeroCivico string
+	CAP          string
+	Comune       string
+	Provincia    string
+	Nazione      string
 }
 
 // SAMLBinding can be either HTTPRedirect or HTTPPost.
@@ -227,19 +259,54 @@ func (sp *SP) Metadata() string {
 
     {{ range $cp := .ContactPersons }}
     <md:ContactPerson contactType="{{$cp.Attributes.ContactType}}"> 
-		<md:Extensions>
+		<md:Extensions {{ if (eq $cp.Attributes.ContactType "billing")}}xmlns:fpa="https://spid.gov.it/invoicing-extensions"{{end}}>
 			{{ if $cp.Extensions.Public }}
 				<spid:IPACode>{{$cp.Extensions.IPACode}}</spid:IPACode>
 				<spid:Public/>
 			{{ else }}
-				{{ if $cp.Extensions.VatNumber }}
-					<spid:VATNumber>{{ $cp.Extensions.VatNumber }}</spid:VATNumber>
+			{{  if (ne $cp.Attributes.ContactType "billing")}}
+				{{ if $cp.Extensions.VATNumber }}
+					<spid:VATNumber>{{ $cp.Extensions.VATNumber }}</spid:VATNumber>
 				{{ end }}
-				{{ if $cp.Extensions.FiscalCode }}
+				{{ if $cp.Extensions.FiscalCode}}
 					<spid:FiscalCode>{{ $cp.Extensions.FiscalCode }}</spid:FiscalCode>
 				{{ end }}
 				<spid:Private/>
-			{{end}}
+			{{ end }}
+			{{ end }}
+			{{ if (eq $cp.Attributes.ContactType "billing")}}
+				{{$cessionarioCommittente := $cp.Extensions.CessionarioCommittente}}
+				<fpa:CessionarioCommittente>
+					<fpa:DatiAnagrafici>
+						<fpa:IdFiscaleIVA>
+							<fpa:IdPaese>{{$cessionarioCommittente.DatiAnagrafici.IDFiscaleIVA.IDPaese}}</fpa:IdPaese>
+							<fpa:IdCodice>{{$cessionarioCommittente.DatiAnagrafici.IDFiscaleIVA.IDCodice}}</fpa:IdCodice>
+						</fpa:IdFiscaleIVA>
+						<fpa:Anagrafica>
+						   <fpa:Denominazione>{{$cessionarioCommittente.DatiAnagrafici.Anagrafica.Denominazione}}</fpa:Denominazione> 
+						   {{ if $cessionarioCommittente.DatiAnagrafici.Anagrafica.Titolo}}
+						   <fpa:Titolo>{{$cessionarioCommittente.DatiAnagrafici.Anagrafica.Titolo}}</fpa:Titolo> 
+						   {{ end }}
+						   {{ if $cessionarioCommittente.DatiAnagrafici.Anagrafica.CodiceEORI}}
+						   <fpa:CodiceEORI>{{$cessionarioCommittente.DatiAnagrafici.Anagrafica.CodiceEORI}}</fpa:CodiceEORI> 
+						   {{ end }}
+						   </fpa:Anagrafica>
+					</fpa:DatiAnagrafici>
+					{{$sede := $cp.Extensions.CessionarioCommittente.Sede}}
+					<fpa:Sede>
+						 <fpa:Indirizzo>{{$sede.Indirizzo}}</fpa:Indirizzo>
+						 {{ if $sede.NumeroCivico }}
+						 	<fpa:NumeroCivico>{{$sede.NumeroCivico}}</fpa:NumeroCivico>
+						 {{ end }}
+						 <fpa:CAP>{{$sede.CAP}}</fpa:CAP>
+						 <fpa:Comune>{{$sede.Comune}}</fpa:Comune>
+						 {{ if $sede.Provincia }}
+						 	<fpa:Provincia>{{$sede.Provincia}}</fpa:Provincia>
+						 {{ end }}
+						 <fpa:Nazione>{{$sede.Nazione}}</fpa:Nazione>
+					</fpa:Sede>
+				</fpa:CessionarioCommittente>
+			{{ end }}
 		</md:Extensions>
 		{{ if $cp.Company }}
 		<md:Company>{{ $cp.Company }}</md:Company>
@@ -269,7 +336,6 @@ func (sp *SP) Metadata() string {
 	t := template.Must(template.New("metadata").Parse(tmpl))
 	var metadata bytes.Buffer
 	t.Execute(&metadata, aux)
-
 	return string(sp.signMetadata(metadata))
 }
 
