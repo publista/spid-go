@@ -73,17 +73,13 @@ func (authnreq *AuthnRequest) XML(binding SAMLBinding) []byte {
 	
 	<saml:Issuer
         NameQualifier="{{ .SP.EntityID }}"
-        Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">
-        {{ .SP.EntityID }}
-	</saml:Issuer>
+        Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">{{ .SP.EntityID }}</saml:Issuer>
 
 	{{ .SignatureTemplate }}
 
     <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:2.0:nameid-format:transient" />
     <samlp:RequestedAuthnContext Comparison="{{ .Comparison }}">
-        <saml:AuthnContextClassRef>
-            https://www.spid.gov.it/SpidL{{ .Level }}
-        </saml:AuthnContextClassRef>
+        <saml:AuthnContextClassRef>https://www.spid.gov.it/SpidL{{ .Level }}</saml:AuthnContextClassRef>
     </samlp:RequestedAuthnContext>
 </samlp:AuthnRequest>
 `
