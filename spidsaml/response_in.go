@@ -10,7 +10,10 @@ import (
 	xmlsec "github.com/crewjam/go-xmlsec"
 )
 
-const samlVersion = "2.0"
+const (
+	samlVersion      = "2.0"
+	samlIssuerFormat = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
+)
 
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
 type Response struct {
@@ -80,6 +83,11 @@ func (response *Response) validate(inResponseTo string) error {
 		if response.Issuer() != response.AssertionIssuer() {
 			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
 				response.Issuer(), response.AssertionIssuer())
+		}
+
+		if response.IssuerFormat() != samlIssuerFormat {
+			return fmt.Errorf("Response/Issuer/Format (%s) is not equal to %s",
+				response.IssuerFormat(), samlIssuerFormat)
 		}
 
 		if response.AssertionAudience() != response.SP.EntityID {

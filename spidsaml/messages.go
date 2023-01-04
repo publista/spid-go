@@ -348,6 +348,11 @@ func (msg *inMessage) Issuer() string {
 	return msg.doc.FindElement("/*/Issuer").Text()
 }
 
+// IssuerFormat returns the value of the <Issuer><Format> element.
+func (msg *inMessage) IssuerFormat() string {
+	return msg.doc.FindElement("/*/Issuer").SelectAttrValue("Format", "")
+}
+
 // InResponseTo returns the value of the <InResponseTo> element.
 func (msg *inMessage) InResponseTo() string {
 	return msg.doc.Root().SelectAttrValue("InResponseTo", "")
