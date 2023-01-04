@@ -13,6 +13,7 @@ import (
 const (
 	samlVersion      = "2.0"
 	samlIssuerFormat = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
+	samlNameIDFormat = "urn:oasis:names:tc:SAML:2.0:nameid-format:transient"
 )
 
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
@@ -79,9 +80,12 @@ func (response *Response) validate(inResponseTo string) error {
 
 	if response.Success() {
 		if err := response.validateAssertion(); err != nil {
-			return fmt.Errorf("Invalid Response/Assertion: %s", err)
+			return err
 		}
 
+		if err := response.validateNameID(); err != nil {
+			return err
+		}
 		if response.Issuer() != response.AssertionIssuer() {
 			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
 				response.Issuer(), response.AssertionIssuer())
@@ -237,11 +241,6 @@ func (response *Response) HasAssertion() bool {
 	return response.doc.FindElement("/Response/Assertion") != nil
 }
 
-// AssertionIssuer returns the value of the <Assertion><Issuer> element.
-func (response *Response) AssertionIssuer() string {
-	return response.doc.FindElement("/Response/Assertion/Issuer").Text()
-}
-
 // AssertionID returns the value of the <Assertion><ID> element.
 func (response *Response) AssertionID() string {
 	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("ID", "")
@@ -255,6 +254,21 @@ func (response *Response) AssertionVersion() string {
 // AssertionIssueInstant returns the value of the <Assertion><IssueInstant> element.
 func (response *Response) AssertionIssueInstant() string {
 	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
+}
+
+// AssertionIssuer returns the value of the <Assertion><Issuer> element.
+func (response *Response) AssertionIssuer() string {
+	return response.doc.FindElement("/Response/Assertion/Issuer").Text()
+}
+
+// NameIDFormat returns the value of the <Assertion><Subject><NameID><Format> element.
+func (response *Response) NameIDFormat() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/NameID").SelectAttrValue("Format", "")
+}
+
+// NameIDNameQualifier returns the value of the <Assertion><Subject><NameID><NameQualifier> element.
+func (response *Response) NameIDNameQualifier() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/NameID").SelectAttrValue("NameQualifier", "")
 }
 
 // AssertionRecipient returns the value of the <Assertion> Recipient attribute.
@@ -332,6 +346,23 @@ func (response *Response) validateAssertion() error {
 	if resIssueInstant := response.IssueInstant(); issueInstant != resIssueInstant {
 		return fmt.Errorf("Response/Assertion/IssueInstant (%s) does not match Response/IssueInstant (%s)",
 			issueInstant, resIssueInstant)
+	}
+
+	return nil
+}
+
+func (response *Response) validateNameID() error {
+	if response.NameID() == "" {
+		return fmt.Errorf("Invalid Response/Assertion/Subject/NameID value")
+	}
+
+	if format := response.NameIDFormat(); format != samlNameIDFormat {
+		return fmt.Errorf("Response/Assertion/Subject/NameID/Format (%s) does not match (%s)",
+			format, samlNameIDFormat)
+	}
+
+	if response.NameIDNameQualifier() == "" {
+		return fmt.Errorf("Invalid Response/Assertion/Subject/NameID/NameQualifier value")
 	}
 
 	return nil
