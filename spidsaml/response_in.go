@@ -91,9 +91,9 @@ func (response *Response) validate(inResponseTo string) error {
 		if err := response.validateNameID(); err != nil {
 			return err
 		}
-		if response.Issuer() != response.AssertionIssuer() {
-			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
-				response.Issuer(), response.AssertionIssuer())
+
+		if err := response.validateAssertionIssuer(); err != nil {
+			return err
 		}
 
 		if response.IssuerFormat() != samlIssuerFormat {
@@ -276,6 +276,11 @@ func (response *Response) AssertionIssuer() string {
 	return response.doc.FindElement("/Response/Assertion/Issuer").Text()
 }
 
+// AssertionIssuerFormat returns the value of the <Assertion><Issuer> format attribute.
+func (response *Response) AssertionIssuerFormat() string {
+	return response.doc.FindElement("/Response/Assertion/Issuer").SelectAttrValue("Format", "")
+}
+
 // NameIDFormat returns the value of the <Assertion><Subject><NameID><Format> element.
 func (response *Response) NameIDFormat() string {
 	return response.doc.FindElement("/Response/Assertion/Subject/NameID").SelectAttrValue("Format", "")
@@ -383,6 +388,20 @@ func (response *Response) validateNameID() error {
 
 	if response.NameIDNameQualifier() == "" {
 		return fmt.Errorf("Invalid Response/Assertion/Subject/NameID/NameQualifier value")
+	}
+
+	return nil
+}
+
+func (response *Response) validateAssertionIssuer() error {
+	if response.Issuer() != response.AssertionIssuer() {
+		return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
+			response.Issuer(), response.AssertionIssuer())
+	}
+
+	if response.AssertionIssuer() != samlIssuerFormat {
+		return fmt.Errorf("Response/Assertion/Issuer/Format (%s) is not equal to %s",
+			response.IssuerFormat(), samlIssuerFormat)
 	}
 
 	return nil
