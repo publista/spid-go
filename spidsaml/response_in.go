@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	samlVersion      = "2.0"
-	samlIssuerFormat = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
-	samlNameIDFormat = "urn:oasis:names:tc:SAML:2.0:nameid-format:transient"
+	samlVersion       = "2.0"
+	samlIssuerFormat  = "urn:oasis:names:tc:SAML:2.0:nameid-format:entity"
+	samlNameIDFormat  = "urn:oasis:names:tc:SAML:2.0:nameid-format:transient"
+	samlSubjectMethod = "urn:oasis:names:tc:SAML:2.0:cm:bearer"
 )
 
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
@@ -108,6 +109,11 @@ func (response *Response) validate(inResponseTo string) error {
 		if response.AssertionInResponseTo() != inResponseTo {
 			return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
 				response.AssertionInResponseTo(), inResponseTo)
+		}
+
+		if response.AssertionMethod() != samlSubjectMethod {
+			return fmt.Errorf("Invalid Method: '%s' (expected: '%s')",
+				response.AssertionMethod(), samlSubjectMethod)
 		}
 
 		for _, cert := range response.IDP.CertPEM() {
@@ -293,6 +299,11 @@ func (response *Response) AssertionAudience() string {
 // AssertionInResponseTo returns the value of the <Assertion> InResponseTo attribute.
 func (response *Response) AssertionInResponseTo() string {
 	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("InResponseTo", "")
+}
+
+// AssertionMethod returns the value of the <Assertion><Subject><SubjectConfirmation><SubjectConfirmationData> Method attribute.
+func (response *Response) AssertionMethod() string {
+	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("Method", "")
 }
 
 // NotBefore returns the value of the <Assertion> NotBefore attribute.
