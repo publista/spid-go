@@ -78,7 +78,9 @@ func (response *Response) validate(inResponseTo string) error {
 	}
 
 	if response.Success() {
-		// We expect to have an <Assertion> element
+		if err := response.validateAssertion(); err != nil {
+			return fmt.Errorf("Invalid Response/Assertion: %s", err)
+		}
 
 		if response.Issuer() != response.AssertionIssuer() {
 			return fmt.Errorf("Response/Issuer (%s) does not match Assertion/Issuer (%s)",
@@ -230,9 +232,29 @@ func (response *Response) SessionIndex() string {
 	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("SessionIndex", "")
 }
 
+// HasAssertion checks if <Assertion> element exists.
+func (response *Response) HasAssertion() bool {
+	return response.doc.FindElement("/Response/Assertion") != nil
+}
+
 // AssertionIssuer returns the value of the <Assertion><Issuer> element.
 func (response *Response) AssertionIssuer() string {
 	return response.doc.FindElement("/Response/Assertion/Issuer").Text()
+}
+
+// AssertionID returns the value of the <Assertion><ID> element.
+func (response *Response) AssertionID() string {
+	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("ID", "")
+}
+
+// AssertionVersion returns the value of the <Assertion><Version> element.
+func (response *Response) AssertionVersion() string {
+	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("Version", "")
+}
+
+// AssertionIssueInstant returns the value of the <Assertion><IssueInstant> element.
+func (response *Response) AssertionIssueInstant() string {
+	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
 }
 
 // AssertionRecipient returns the value of the <Assertion> Recipient attribute.
@@ -287,4 +309,30 @@ func (response *Response) Attributes() map[string]string {
 		attributes[e.SelectAttr("Name").Value] = e.FindElement("AttributeValue").Text()
 	}
 	return attributes
+}
+
+func (response *Response) validateAssertion() error {
+	if !response.HasAssertion() {
+		return fmt.Errorf("Assertion element not exists")
+	}
+
+	if response.AssertionID() == "" {
+		return fmt.Errorf("Invalid Assertion ID attribute")
+	}
+
+	if version := response.AssertionVersion(); version != samlVersion {
+		return fmt.Errorf("Invalid Assertion Version: '%s'", version)
+
+	}
+
+	issueInstant := response.AssertionIssueInstant()
+	if _, err := time.Parse(time.RFC3339, issueInstant); err != nil {
+		return fmt.Errorf("Invalid assertion issue instant: '%s'", issueInstant)
+	}
+	if resIssueInstant := response.IssueInstant(); issueInstant != resIssueInstant {
+		return fmt.Errorf("Response/Assertion/IssueInstant (%s) does not match Response/IssueInstant (%s)",
+			issueInstant, resIssueInstant)
+	}
+
+	return nil
 }
