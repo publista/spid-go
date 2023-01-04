@@ -55,6 +55,11 @@ func (response *Response) validate(inResponseTo string) error {
 		return fmt.Errorf("Invalid Version: '%s'", version)
 	}
 
+	issueInstant := response.IssueInstant()
+	if _, err := time.Parse(time.RFC3339, issueInstant); err != nil {
+		return fmt.Errorf("Invalid issue instant: '%s'", issueInstant)
+	}
+
 	// As of current SPID spec, Destination might be populated with the entityID
 	// instead of the ACS URL
 	destination := response.Destination()

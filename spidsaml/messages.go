@@ -362,3 +362,8 @@ func (msg *inMessage) Destination() string {
 func (msg *inMessage) Version() string {
 	return msg.doc.Root().SelectAttrValue("Version", "")
 }
+
+// IssueInstant returns the value of the <IssueInstant> element.
+func (msg *inMessage) IssueInstant() string {
+	return msg.doc.Root().SelectAttrValue("IssueInstant", "")
+}
