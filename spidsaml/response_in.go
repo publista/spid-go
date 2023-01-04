@@ -10,6 +10,8 @@ import (
 	xmlsec "github.com/crewjam/go-xmlsec"
 )
 
+const samlVersion = "2.0"
+
 // Response represents an incoming SPID Response/Assertion message. We get such messages after an AuthnRequest (Single Sign-On).
 type Response struct {
 	inMessage
@@ -46,6 +48,11 @@ func (response *Response) validate(inResponseTo string) error {
 	if inResponseTo != response.InResponseTo() {
 		return fmt.Errorf("Invalid InResponseTo: '%s' (expected: '%s')",
 			response.InResponseTo(), inResponseTo)
+	}
+
+	version := response.Version()
+	if version != samlVersion {
+		return fmt.Errorf("Invalid Version: '%s'", version)
 	}
 
 	// As of current SPID spec, Destination might be populated with the entityID

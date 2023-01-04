@@ -210,7 +210,7 @@ func (msg *inMessage) parse(r *http.Request, param string) error {
 		err = fmt.Errorf("Invalid HTTP method: %s", r.Method)
 	}
 
-	if (err != nil) {
+	if err != nil {
 		return err
 	}
 
@@ -310,7 +310,7 @@ func (msg *inMessage) validateSignatureForGet(param string, query url.Values) er
 	// Verify the signature
 	for _, cert := range msg.IDP.Certs {
 		err = rsa.VerifyPKCS1v15(cert.PublicKey.(*rsa.PublicKey), hashAlg, h, sig)
-		if (err == nil) {
+		if err == nil {
 			return nil
 		}
 	}
@@ -356,4 +356,9 @@ func (msg *inMessage) InResponseTo() string {
 // Destination returns the value of the <Destination> element.
 func (msg *inMessage) Destination() string {
 	return msg.doc.Root().SelectAttrValue("Destination", "")
+}
+
+// Version returns the value of the <Version> element.
+func (msg *inMessage) Version() string {
+	return msg.doc.Root().SelectAttrValue("Version", "")
 }
