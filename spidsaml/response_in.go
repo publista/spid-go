@@ -63,6 +63,10 @@ func (response *Response) validate(inResponseTo string) error {
 	if _, err := time.Parse(time.RFC3339, issueInstant); err != nil {
 		return fmt.Errorf("Invalid issue instant: '%s'", issueInstant)
 	}
+	if issueInstant != response.AuthnInstant() {
+		return fmt.Errorf("Response/IssueInstant (%s) does not match AuthnInstant (%s)",
+			issueInstant, response.AuthnInstant())
+	}
 
 	// As of current SPID spec, Destination might be populated with the entityID
 	// instead of the ACS URL
@@ -236,6 +240,11 @@ func (response *Response) SessionIndex() string {
 	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("SessionIndex", "")
 }
 
+// AuthnInstant returns the value of the AuthnInstant attribute.
+func (response *Response) AuthnInstant() string {
+	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("AuthnInstant", "")
+}
+
 // HasAssertion checks if <Assertion> element exists.
 func (response *Response) HasAssertion() bool {
 	return response.doc.FindElement("/Response/Assertion") != nil
@@ -310,7 +319,7 @@ func (response *Response) Level() int {
 	r, _ := regexp.Compile("https://www.spid.gov.it/SpidL([1-3])")
 	res := r.FindStringSubmatch(ref)
 	if len(res) == 0 {
-		return 0
+		panic(fmt.Errorf("invalid spid AuthnContextClassRef value (%s)", ref))
 	}
 	i, _ := strconv.Atoi(res[1])
 	return i
