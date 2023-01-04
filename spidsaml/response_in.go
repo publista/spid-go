@@ -64,10 +64,6 @@ func (response *Response) validate(inResponseTo string) error {
 	if _, err := time.Parse(time.RFC3339, issueInstant); err != nil {
 		return fmt.Errorf("Invalid issue instant: '%s'", issueInstant)
 	}
-	if issueInstant != response.AuthnInstant() {
-		return fmt.Errorf("Response/IssueInstant (%s) does not match AuthnInstant (%s)",
-			issueInstant, response.AuthnInstant())
-	}
 
 	// As of current SPID spec, Destination might be populated with the entityID
 	// instead of the ACS URL
@@ -94,6 +90,11 @@ func (response *Response) validate(inResponseTo string) error {
 
 		if err := response.validateAssertionIssuer(); err != nil {
 			return err
+		}
+
+		if issueInstant != response.AuthnInstant() {
+			return fmt.Errorf("Response/IssueInstant (%s) does not match AuthnInstant (%s)",
+				issueInstant, response.AuthnInstant())
 		}
 
 		if response.IssuerFormat() != samlIssuerFormat {
@@ -168,7 +169,7 @@ func (response *Response) validate(inResponseTo string) error {
 		}
 
 		// exact match is *not* ok
-		scdNotOnOrAfter, err := response.NotOnOrAfter()
+		scdNotOnOrAfter, err := response.SubjectConfirmationDataNotOnOrAfter()
 		if err != nil {
 			return err
 		}
@@ -306,9 +307,9 @@ func (response *Response) AssertionInResponseTo() string {
 	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("InResponseTo", "")
 }
 
-// AssertionMethod returns the value of the <Assertion><Subject><SubjectConfirmation><SubjectConfirmationData> Method attribute.
+// AssertionMethod returns the value of the <Assertion><Subject><SubjectConfirmation> Method attribute.
 func (response *Response) AssertionMethod() string {
-	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation/SubjectConfirmationData").SelectAttrValue("Method", "")
+	return response.doc.FindElement("/Response/Assertion/Subject/SubjectConfirmation").SelectAttrValue("Method", "")
 }
 
 // NotBefore returns the value of the <Assertion> NotBefore attribute.
@@ -399,9 +400,9 @@ func (response *Response) validateAssertionIssuer() error {
 			response.Issuer(), response.AssertionIssuer())
 	}
 
-	if response.AssertionIssuer() != samlIssuerFormat {
+	if response.AssertionIssuerFormat() != samlIssuerFormat {
 		return fmt.Errorf("Response/Assertion/Issuer/Format (%s) is not equal to %s",
-			response.IssuerFormat(), samlIssuerFormat)
+			response.AssertionIssuerFormat(), samlIssuerFormat)
 	}
 
 	return nil
