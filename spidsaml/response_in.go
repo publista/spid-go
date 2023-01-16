@@ -249,7 +249,10 @@ func (response *Response) SessionIndex() string {
 
 // AuthnInstant returns the value of the AuthnInstant attribute.
 func (response *Response) AuthnInstant() string {
-	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("AuthnInstant", "")
+	// remove milliseconds
+	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
+	ii := response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("AuthnInstant", "")
+	return m1.ReplaceAllString(ii, "Z")
 }
 
 // HasAssertion checks if <Assertion> element exists.
@@ -269,7 +272,10 @@ func (response *Response) AssertionVersion() string {
 
 // AssertionIssueInstant returns the value of the <Assertion><IssueInstant> element.
 func (response *Response) AssertionIssueInstant() string {
-	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
+	// remove milliseconds
+	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
+	ii := response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
+	return m1.ReplaceAllString(ii, "Z")
 }
 
 // AssertionIssuer returns the value of the <Assertion><Issuer> element.

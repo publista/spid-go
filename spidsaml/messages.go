@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -370,5 +371,8 @@ func (msg *inMessage) Version() string {
 
 // IssueInstant returns the value of the <IssueInstant> element.
 func (msg *inMessage) IssueInstant() string {
-	return msg.doc.Root().SelectAttrValue("IssueInstant", "")
+	// remove milliseconds
+	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
+	ii := msg.doc.Root().SelectAttrValue("IssueInstant", "")
+	return m1.ReplaceAllString(ii, "Z")
 }
