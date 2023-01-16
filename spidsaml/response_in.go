@@ -97,7 +97,7 @@ func (response *Response) validate(inResponseTo string) error {
 				issueInstant, response.AuthnInstant())
 		}
 
-		if response.IssuerFormat() != samlIssuerFormat {
+		if response.IssuerFormat() != "" && response.IssuerFormat() != samlIssuerFormat {
 			return fmt.Errorf("Response/Issuer/Format (%s) is not equal to %s",
 				response.IssuerFormat(), samlIssuerFormat)
 		}
