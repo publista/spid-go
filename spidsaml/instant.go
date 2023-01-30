@@ -15,7 +15,7 @@ func CheckTime(t1s, t2s string) error {
 	if err != nil {
 		return fmt.Errorf("invalid t2s %s", t2s)
 	}
-	if !(t1.After(t2.Add(-1*time.Second)) && t1.Before(t2.Add(1*time.Second))) {
+	if !(t1.After(t2.Add(-2*time.Second)) && t1.Before(t2.Add(2*time.Second))) {
 		return fmt.Errorf("t1s (%s) does not match t2s (%s)",
 			t1s, t2s)
 	}
