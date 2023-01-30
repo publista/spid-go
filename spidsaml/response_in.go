@@ -275,6 +275,7 @@ func (response *Response) AssertionIssueInstant() string {
 	// remove milliseconds
 	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
 	ii := response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
+	fmt.Printf("[SAML Response] Assertion/IssueInstant:%s\n", ii)
 	return m1.ReplaceAllString(ii, "Z")
 }
 

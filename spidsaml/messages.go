@@ -374,5 +374,6 @@ func (msg *inMessage) IssueInstant() string {
 	// remove milliseconds
 	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
 	ii := msg.doc.Root().SelectAttrValue("IssueInstant", "")
+	fmt.Printf("[SAML Response] Response/IssueInstant:%s\n", ii)
 	return m1.ReplaceAllString(ii, "Z")
 }
