@@ -92,7 +92,7 @@ func (response *Response) validate(inResponseTo string) error {
 			return err
 		}
 
-		if issueInstant != response.AuthnInstant() {
+		if err := CheckTime(issueInstant, response.AuthnInstant()); err != nil {
 			return fmt.Errorf("Response/IssueInstant (%s) does not match AuthnInstant (%s)",
 				issueInstant, response.AuthnInstant())
 		}
@@ -249,10 +249,7 @@ func (response *Response) SessionIndex() string {
 
 // AuthnInstant returns the value of the AuthnInstant attribute.
 func (response *Response) AuthnInstant() string {
-	// remove milliseconds
-	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
-	ii := response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("AuthnInstant", "")
-	return m1.ReplaceAllString(ii, "Z")
+	return response.doc.FindElement("/Response/Assertion/AuthnStatement").SelectAttrValue("AuthnInstant", "")
 }
 
 // HasAssertion checks if <Assertion> element exists.
@@ -272,10 +269,7 @@ func (response *Response) AssertionVersion() string {
 
 // AssertionIssueInstant returns the value of the <Assertion><IssueInstant> element.
 func (response *Response) AssertionIssueInstant() string {
-	// remove milliseconds
-	m1 := regexp.MustCompile(`(\.\d+?)Z$`)
-	ii := response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
-	return m1.ReplaceAllString(ii, "Z")
+	return response.doc.FindElement("/Response/Assertion").SelectAttrValue("IssueInstant", "")
 }
 
 // AssertionIssuer returns the value of the <Assertion><Issuer> element.
@@ -375,9 +369,9 @@ func (response *Response) validateAssertion() error {
 	if _, err := time.Parse(time.RFC3339, issueInstant); err != nil {
 		return fmt.Errorf("Invalid assertion issue instant: '%s'", issueInstant)
 	}
-	if resIssueInstant := response.IssueInstant(); issueInstant != resIssueInstant {
+	if err := CheckTime(response.IssueInstant(), issueInstant); err != nil {
 		return fmt.Errorf("Response/Assertion/IssueInstant (%s) does not match Response/IssueInstant (%s)",
-			issueInstant, resIssueInstant)
+			issueInstant, response.IssueInstant())
 	}
 
 	return nil
